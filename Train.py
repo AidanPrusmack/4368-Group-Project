@@ -48,7 +48,7 @@ data = pd.read_csv(csv_path)
 
 correct_predictions = 0
 total_images = len(data)
-
+print(f'Total Images: {total_images}')
 for _, row in data.iterrows():
     image_name = row['X_ray_image_name']
     true_label = row['Label']
