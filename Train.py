@@ -47,9 +47,23 @@ csv_path = "dataset/coronahack-chest-xraydataset/Chest_xray_Corona_Metadata.csv"
 data = pd.read_csv(csv_path)
 
 correct_predictions = 0
+normal_predictions = 0
+abnormal_predictions = 0
 total_images = len(data)
 print(f'Total Images: {total_images}')
+# Add a counter variable before the loop
+image_counter = 0
+max_images = 5  # Set the maximum number of images to process
+processed_images = 0  # Track actually processed images
+
 for _, row in data.iterrows():
+    # Increment counter
+    image_counter += 1
+
+    # Break after processing max_images
+    if image_counter > max_images:
+        break
+
     image_name = row['X_ray_image_name']
     true_label = row['Label']
     image_path = os.path.join(
@@ -58,13 +72,24 @@ for _, row in data.iterrows():
     print(image_path)
 
     if os.path.exists(image_path):
-        predicted_label, _ = predict_xray(image_path)
-        if predicted_label == true_label:
+        processed_images += 1  # Count only images that exist
+        predicted_label, confidence = predict_xray(image_path)
+
+        if predicted_label == "Normal" and true_label == "Normal":
+            normal_predictions += 1
             correct_predictions += 1
-        print(f"Image: {image_name}, True Label: {true_label}, Predicted Label: {predicted_label}")
+        elif predicted_label == "Abnormal" and true_label == "Pnemonia":
+            abnormal_predictions += 1
+            correct_predictions += 1
+        print(
+            f"Image: {image_name}, True Label: {true_label}, Predicted: {predicted_label}, Confidence: {confidence:.2f}")
     else:
         print(f"Image {image_name} not found.")
 
-# Print overall accuracy
-accuracy = correct_predictions / total_images
+# Print overall accuracy - use processed_images instead of total_images
+accuracy = correct_predictions / processed_images if processed_images > 0 else 0
+print(f'Correct Predictions: {correct_predictions}')
+print(f'Normal Predictions: {normal_predictions}')
+print(f'Abnormal Predictions: {abnormal_predictions}')
+print(f'Processed Images: {processed_images}')
 print(f"Accuracy: {accuracy:.2f}")
