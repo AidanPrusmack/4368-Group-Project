@@ -6,10 +6,8 @@ from tensorflow.keras import layers, models, Input, callbacks
 from tensorflow.keras.preprocessing.image import load_img, img_to_array, ImageDataGenerator
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
 
-# Suppress TensorFlow warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-# Paths to dataset
 csv_path = "dataset/coronahack-chest-xraydataset/Chest_xray_Corona_Metadata.csv"
 base_img_dir = "dataset/coronahack-chest-xraydataset/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/"
 train_img_dir = os.path.join(base_img_dir, "train/")
@@ -48,7 +46,7 @@ def create_model():
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
         loss='sparse_categorical_crossentropy',
-        metrics=['accuracy']  # Removed the precision and recall metrics that were causing issues
+        metrics=['accuracy']
     )
     return model
 
@@ -85,41 +83,33 @@ def visualize_results(y_true, y_pred, class_names):
     print("\nConfusion Matrix:")
     print(cm)
 
-    # Print in a readable format
     print(f"\n{class_names[0]} correctly identified: {cm[0, 0]}")
     print(f"{class_names[0]} incorrectly classified as {class_names[1]}: {cm[0, 1]}")
     print(f"{class_names[1]} correctly identified: {cm[1, 1]}")
     print(f"{class_names[1]} incorrectly classified as {class_names[0]}: {cm[1, 0]}")
 
-    # Classification report
     report = classification_report(y_true, y_pred, target_names=class_names)
     print("\nClassification Report:")
     print(report)
 
 
-# Main execution
 if __name__ == "__main__":
-    # Load the full dataset
     df = pd.read_csv(csv_path)
 
-    # Split based on the Dataset_type column, not randomly
     train_df = df[df['Dataset_type'] == 'TRAIN']
     test_df = df[df['Dataset_type'] == 'TEST']
 
     print(f"Training samples: {len(train_df)}")
     print(f"Testing samples: {len(test_df)}")
 
-    # Class distribution
     print("\nTraining class distribution:")
     print(train_df['Label'].value_counts())
     print("\nTesting class distribution:")
     print(test_df['Label'].value_counts())
 
-    # Load and preprocess data
     x_train, y_train, _ = load_and_preprocess_data(train_df, train_img_dir)
     x_test, y_test, test_paths = load_and_preprocess_data(test_df, test_img_dir)
 
-    # Create data augmentation for training
     datagen = ImageDataGenerator(
         rotation_range=20,
         width_shift_range=0.15,
@@ -130,11 +120,10 @@ if __name__ == "__main__":
         fill_mode='nearest'
     )
 
-    # Create and train the model
+
     model = create_model()
     print(model.summary())
 
-    # Add callbacks for better training
     callbacks_list = [
         callbacks.EarlyStopping(
             monitor='val_loss',
@@ -155,11 +144,10 @@ if __name__ == "__main__":
     ]
     class_weights = {0: len(train_df) / len(train_df[train_df['Label'] == 'Normal']),
                      1: len(train_df) / len(train_df[train_df['Label'] == 'Pnemonia'])}
-    # Fixed: Don't use the generator directly through steps_per_epoch
-    # Instead, fit directly with the augmented data
+
     batch_size = 32
     model.fit(
-        x_train, y_train,  # Use x_train and y_train directly
+        x_train, y_train,
         epochs=10,
         batch_size=batch_size,
         validation_data=(x_test, y_test),
@@ -167,31 +155,25 @@ if __name__ == "__main__":
         class_weight=class_weights
     )
 
-    # Evaluate on test set
     print("\nEvaluating model on test set:")
     test_loss, test_acc = model.evaluate(x_test, y_test, verbose=1)
     print(f"Test accuracy: {test_acc:.4f}")
 
-    # Get predictions for more detailed metrics
     y_pred_prob = model.predict(x_test)
     y_pred = np.argmax(y_pred_prob, axis=1)
 
-    # Calculate AUC if possible (requires probabilities)
     try:
         auc = roc_auc_score(y_test, y_pred_prob[:, 1])
         print(f"ROC AUC: {auc:.4f}")
     except:
         print("Could not calculate ROC AUC")
 
-    # Visualize results
     class_names = ['Normal', 'Abnormal']
     visualize_results(y_test, y_pred, class_names)
 
-    # Save the trained model
     model.save('chest_xray_model.keras')
     print("Model saved as 'chest_xray_model.h5'")
 
-    # Check for misclassified images
     print("\nMisclassified Images:")
     misclassified_count = 0
     for i in range(len(y_test)):
@@ -203,12 +185,10 @@ if __name__ == "__main__":
             print(f"Image: {image_name}, True: {true_label}, Predicted: {pred_label}, Confidence: {confidence:.4f}")
             misclassified_count += 1
 
-            # Limit display of misclassified to keep output manageable
             if misclassified_count >= 20:
                 print("(More misclassified images exist but not shown for brevity)")
                 break
 
-    # Calculate precision and recall manually (since we removed the metrics)
     tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
     precision = tp / (tp + fp) if (tp + fp) > 0 else 0
     recall = tp / (tp + fn) if (tp + fn) > 0 else 0
