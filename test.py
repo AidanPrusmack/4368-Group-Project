@@ -6,15 +6,12 @@ import os
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-# Load the saved model
+
 model = load_model('chest_xray_model.keras')
 
-# Path to your new test dataset
 test_csv_path = "dataset/coronahack-chest-xraydataset/Chest_xray_Corona_Metadata.csv"
 test_image_dir = "dataset/coronahack-chest-xraydataset/Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/test/"
 
-
-# Function to load test data
 def load_test_data(csv_path, image_dir):
     df = pd.read_csv(csv_path)
     images = []
@@ -32,23 +29,18 @@ def load_test_data(csv_path, image_dir):
     return image_paths, true_labels
 
 
-# Load test image paths and labels
 test_image_paths, test_true_labels = load_test_data(test_csv_path, test_image_dir)
 
-# Run predictions
 results = []
 for img_path, true_label in zip(test_image_paths, test_true_labels):
-    # Load and preprocess image
     img = load_img(img_path, target_size=(224, 224))
     img_array = img_to_array(img)
     img_array = np.expand_dims(img_array, axis=0) / 255.0
 
-    # Predict
     prediction = model.predict(img_array, verbose=0)
     predicted_label = "Normal" if np.argmax(prediction[0]) == 0 else "Abnormal"
     confidence = float(prediction[0][np.argmax(prediction[0])])
 
-    # Store result
     is_correct = predicted_label == true_label
     results.append({
         'image': os.path.basename(img_path),
@@ -58,12 +50,10 @@ for img_path, true_label in zip(test_image_paths, test_true_labels):
         'correct': is_correct
     })
 
-    # Print details for misclassified images
     if not is_correct:
         print(
             f"Misclassified: {os.path.basename(img_path)} - True: {true_label}, Predicted: {predicted_label}, Confidence: {confidence:.2f}")
 
-# Convert results to DataFrame for analysis
 results_df = pd.DataFrame(results)
 accuracy = results_df['correct'].mean()
 
@@ -78,7 +68,6 @@ import random
 from tensorflow.keras.preprocessing.image import load_img
 
 
-# 1. Confusion Matrix
 def plot_confusion_matrix(results_df):
     cm = confusion_matrix(
         (results_df['true_label'] == 'Abnormal').astype(int),
@@ -95,14 +84,9 @@ def plot_confusion_matrix(results_df):
     plt.savefig('confusion_matrix.png')
     plt.show()
 
-
-# 2. ROC Curve
 def plot_roc_curve(results_df):
-    # Get the confidence scores for the "Abnormal" class
-    # Assuming your model outputs confidence for Abnormal class
     y_true = (results_df['true_label'] == 'Abnormal').astype(int)
 
-    # If confidence is for the predicted class, we need to adjust for Normal predictions
     y_scores = np.array([
         conf if pred == 'Abnormal' else 1 - conf
         for conf, pred in zip(results_df['confidence'], results_df['predicted_label'])
@@ -127,11 +111,9 @@ def plot_roc_curve(results_df):
     return roc_auc
 
 
-# 3. Precision-Recall Curve
 def plot_precision_recall_curve(results_df):
     y_true = (results_df['true_label'] == 'Abnormal').astype(int)
 
-    # If confidence is for the predicted class, we need to adjust for Normal predictions
     y_scores = np.array([
         conf if pred == 'Abnormal' else 1 - conf
         for conf, pred in zip(results_df['confidence'], results_df['predicted_label'])
@@ -151,14 +133,10 @@ def plot_precision_recall_curve(results_df):
     plt.savefig('precision_recall_curve.png')
     plt.show()
 
-
-# 4. Distribution of Confidence Scores
 def plot_confidence_distribution(results_df):
     plt.figure(figsize=(10, 6))
 
-    # Confidence distribution for correct predictions
     correct_conf = results_df[results_df['correct']]['confidence']
-    # Confidence distribution for incorrect predictions
     incorrect_conf = results_df[~results_df['correct']]['confidence']
 
     plt.hist(correct_conf, alpha=0.5, bins=20, label='Correct Predictions', color='green')
@@ -174,7 +152,6 @@ def plot_confidence_distribution(results_df):
     plt.show()
 
 
-# 5. Class Distribution
 def plot_class_distribution(results_df):
     class_counts = results_df['true_label'].value_counts()
 
@@ -189,8 +166,6 @@ def plot_class_distribution(results_df):
     plt.savefig('class_distribution.png')
     plt.show()
 
-
-# 6. Accuracy by Class
 def plot_accuracy_by_class(results_df):
     class_accuracy = results_df.groupby('true_label')['correct'].mean()
 
@@ -206,8 +181,6 @@ def plot_accuracy_by_class(results_df):
     plt.savefig('accuracy_by_class.png')
     plt.show()
 
-
-# 7. Examples of Misclassified Images
 def display_misclassified_examples(results_df, test_image_paths, num_samples=3):
     misclassified = results_df[~results_df['correct']]
 
@@ -215,7 +188,6 @@ def display_misclassified_examples(results_df, test_image_paths, num_samples=3):
         print("No misclassified images found.")
         return
 
-    # Select random samples (or all if fewer than num_samples)
     samples = min(num_samples, len(misclassified))
     sampled_indices = random.sample(range(len(misclassified)), samples)
 
@@ -227,7 +199,6 @@ def display_misclassified_examples(results_df, test_image_paths, num_samples=3):
         misclassified_row = misclassified.iloc[idx]
         img_name = misclassified_row['image']
 
-        # Find the original image path
         img_path = None
         for path in test_image_paths:
             if os.path.basename(path) == img_name:
@@ -246,14 +217,11 @@ def display_misclassified_examples(results_df, test_image_paths, num_samples=3):
     plt.savefig('misclassified_examples.png')
     plt.show()
 
-
-# 8. Performance metrics at different confidence thresholds
 def plot_threshold_performance(results_df):
     thresholds = np.arange(0.5, 1.0, 0.05)
     accuracies = []
 
     for threshold in thresholds:
-        # Consider only predictions with confidence >= threshold
         high_conf_preds = results_df[results_df['confidence'] >= threshold]
         if len(high_conf_preds) > 0:
             accuracy = high_conf_preds['correct'].mean()
@@ -282,7 +250,6 @@ def plot_threshold_performance(results_df):
     plt.show()
 
 
-# Run all visualizations
 def generate_all_visualizations(results_df, test_image_paths):
     print("Generating visualizations...")
     plot_confusion_matrix(results_df)
@@ -294,7 +261,6 @@ def generate_all_visualizations(results_df, test_image_paths):
     display_misclassified_examples(results_df, test_image_paths)
     plot_threshold_performance(results_df)
 
-    # Print classification report
     y_true = (results_df['true_label'] == 'Abnormal').astype(int)
     y_pred = (results_df['predicted_label'] == 'Abnormal').astype(int)
     print("\nClassification Report:")
