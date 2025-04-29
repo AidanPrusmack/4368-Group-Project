@@ -51,16 +51,14 @@ normal_predictions = 0
 abnormal_predictions = 0
 total_images = len(data)
 print(f'Total Images: {total_images}')
-# Add a counter variable before the loop
-image_counter = 0
-max_images = 5  # Set the maximum number of images to process
-processed_images = 0  # Track actually processed images
 
-for _, row in data.iterrows():
-    # Increment counter
+image_counter = 0
+max_images = 5  
+processed_images = 0  
+
+for _, row in data.iterrows():  
     image_counter += 1
 
-    # Break after processing max_images
     if image_counter > max_images:
         break
 
@@ -72,7 +70,7 @@ for _, row in data.iterrows():
     print(image_path)
 
     if os.path.exists(image_path):
-        processed_images += 1  # Count only images that exist
+        processed_images += 1 
         predicted_label, confidence = predict_xray(image_path)
 
         if predicted_label == "Normal" and true_label == "Normal":
@@ -86,7 +84,6 @@ for _, row in data.iterrows():
     else:
         print(f"Image {image_name} not found.")
 
-# Print overall accuracy - use processed_images instead of total_images
 accuracy = correct_predictions / processed_images if processed_images > 0 else 0
 print(f'Correct Predictions: {correct_predictions}')
 print(f'Normal Predictions: {normal_predictions}')
