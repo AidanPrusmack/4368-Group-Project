@@ -189,7 +189,7 @@ if __name__ == "__main__":
 
     # Save the trained model
     model.save('chest_xray_model.keras')
-    print("Model saved as 'chest_xray_model.h5'")
+    print("Model saved as 'chest_xray_model.keras'")
 
     # Check for misclassified images
     print("\nMisclassified Images:")
